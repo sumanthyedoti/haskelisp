@@ -28,6 +28,7 @@ library
       Env
       LispVal
       Parser
+      ParserComb
   other-modules:
       Paths_haskellisp
   hs-source-dirs:
