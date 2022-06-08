@@ -8,7 +8,7 @@ import qualified Data.Char as C
 data Error
   = Unexpected String
   | EndOfInput
-  | CustomError String
+  | Error String
   deriving (Show)
 
 newtype Parser v =
@@ -31,7 +31,7 @@ instance Applicative Parser where
       return (f v, input'')
 
 instance Alternative Parser where
-  empty = Parser $ \_ -> Left $ CustomError ""
+  empty = Parser $ \_ -> Left $ Error ""
   (Parser p1) <|> (Parser p2) =
     Parser $ \input ->
       case p1 input of
@@ -60,3 +60,17 @@ string = traverse char
 
 ws :: Parser String
 ws = spanTill C.isSpace
+
+skipMany :: Parser p -> Parser [p]
+skipMany p = many p
+
+skipMany1 :: Parser p -> Parser [p]
+skipMany1 p = some p
+
+oneOf :: String -> Parser Char
+oneOf [] = Parser $ \_ -> Left $ Error "Can not be empty list"
+oneOf str =
+  Parser $ \input ->
+    case (head input) `elem` str of
+      True -> Right (head input, tail input)
+      False -> Left $ (Unexpected $ take 1 input)
