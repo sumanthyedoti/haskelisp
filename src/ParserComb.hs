@@ -41,6 +41,13 @@ instance Alternative Parser where
             Right (v2, rest2) -> return (v2, rest2)
             _ -> Left $ Unexpected (take 1 input)
 
+instance Monad Parser where
+  return = pure
+  (Parser p1) >>= p2 =
+    Parser $ \input -> do
+      (v, rest) <- p1 input
+      parse (p2 v) rest
+
 spanTill :: (Char -> Bool) -> Parser String
 spanTill f = Parser $ Right . span f
 
