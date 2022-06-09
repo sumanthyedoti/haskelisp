@@ -26,9 +26,10 @@ source-repository head
 library
   exposed-modules:
       Env
+      Eval
       LispVal
       Parser
-      ParserComb
+      ParserLib
   other-modules:
       Paths_haskellisp
   hs-source-dirs:

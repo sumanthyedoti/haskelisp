@@ -1,9 +1,10 @@
 {-# LANGUAGE LambdaCase #-}
 
-module ParserComb where
+module ParserLib where
 
 import Control.Applicative
 import qualified Data.Char as C
+import qualified Data.List as L
 
 data Error
   = Unexpected String
@@ -65,8 +66,21 @@ char c = satisfy (== c)
 string :: String -> Parser String
 string = traverse char
 
-ws :: Parser String
-ws = spanTill C.isSpace
+digit :: Parser Char
+digit = satisfy (C.isDigit)
+
+letter :: Parser Char
+letter = satisfy (C.isAlpha)
+
+number :: Parser Double
+number =
+  Parser $ \input ->
+    case reads input :: [(Double, String)] of
+      [] -> Left $ Unexpected $ head input : " not a number"
+      res -> Right $ head res
+
+space :: Parser Char
+space = satisfy (C.isSpace)
 
 skipMany :: Parser p -> Parser [p]
 skipMany p = many p
@@ -74,10 +88,25 @@ skipMany p = many p
 skipMany1 :: Parser p -> Parser [p]
 skipMany1 p = some p
 
-oneOf :: String -> Parser Char
+oneOf :: [Char] -> Parser Char
 oneOf [] = Parser $ \_ -> Left $ Error "Can not be empty list"
 oneOf str =
   Parser $ \input ->
     case (head input) `elem` str of
       True -> Right (head input, tail input)
       False -> Left $ (Unexpected $ take 1 input)
+
+noneOf :: [Char] -> Parser Char
+noneOf [] = Parser $ \_ -> Left $ Error "Can not be empty list"
+noneOf str =
+  Parser $ \input ->
+    case (head input) `elem` str of
+      False -> Right (head input, tail input)
+      True ->
+        Left $
+        (Unexpected $
+         "character should be none of " ++
+         ((init . drop 1) $ show (L.intersperse ',' str)))
+
+sepBy :: Parser a -> Parser b -> Parser [b]
+sepBy sep elem = (:) <$> elem <*> some (sep *> elem) <|> pure []
