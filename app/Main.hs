@@ -2,7 +2,7 @@ module Main where
 
 import System.Environment
 
-import Eval
+import Env (eval)
 import Parser
 import System.IO
 

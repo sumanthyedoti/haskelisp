@@ -26,7 +26,6 @@ source-repository head
 library
   exposed-modules:
       Env
-      Eval
       LispVal
       Parser
       ParserLib

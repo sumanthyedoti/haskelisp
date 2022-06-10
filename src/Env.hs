@@ -1,9 +1,11 @@
 module Env
   ( env
+  , eval
   ) where
 
 import Data.Fixed
 import Data.Maybe
+
 import LispVal
 
 env :: [(String, [LispVal] -> LispVal)]
@@ -21,6 +23,7 @@ env =
   , ("any", boolOp (||))
   , ("number?", isNumber)
   , ("string?", isString)
+  , ("if", conditional)
   -- , ("atom?", isAtom)
   ]
 
@@ -45,6 +48,19 @@ readNum (Number n) = n
 readBool :: LispVal -> Bool
 readBool (Bool n) = n
 
+conditional :: [LispVal] -> LispVal
+conditional [cond, conseq, alt] =
+  case eval (cond) of
+    Bool True -> eval (conseq)
+    Bool False -> eval (alt)
+    _ -> Error "at evaluation of test condition of 'if'"
+conditional args =
+  Error $
+  (if (length args > 3)
+     then "Too many"
+     else "Too few") ++
+  " arguments passed 'if'"
+
 isNumber :: [LispVal] -> LispVal
 isNumber [] = Error "No argument passed to 'number?'"
 isNumber (x:_) =
@@ -58,3 +74,17 @@ isString (x:_) =
   case x of
     String _ -> Bool True
     _ -> Bool False
+
+eval :: LispVal -> LispVal
+eval val@(String _) = val
+eval val@(Number _) = val
+eval val@(Bool _) = val
+eval (List [Atom "quote", val]) = val
+eval (List (Atom func:args)) = apply func $ map eval args
+eval (Error message) = LispVal.Error $ "Error: " ++ message
+eval _ = LispVal.Error "Can not parse"
+
+apply :: String -> [LispVal] -> LispVal
+apply func args =
+  maybe (LispVal.Error $ func ++ " can not be found") ($ args) $
+  (lookup func env)

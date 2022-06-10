@@ -37,7 +37,7 @@ parseAtom = do
   return $
     case atom of
       "#t" -> Bool True
-      "f" -> Bool False
+      "#f" -> Bool False
       _ -> Atom atom
     -- P.char '('
     -- x <- P.try parseList <|> parseDottedList
