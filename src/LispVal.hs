@@ -7,7 +7,6 @@ data LispVal
   | Number Double
   | String String
   | Bool Bool
-  | Error String
 
 instance Show LispVal where
   show (Atom atom) = atom
@@ -18,7 +17,6 @@ instance Show LispVal where
   show (List ls) = "(" ++ unwordList ls ++ ")"
   show (DottedList head tail) =
     "(" ++ unwordList head ++ " . " ++ show tail ++ ")"
-  show (Error str) = "Error: " ++ str
 
 unwordList :: [LispVal] -> String
 unwordList = unwords . map show

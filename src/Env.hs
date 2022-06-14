@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module Env
   ( env
   , eval
@@ -18,15 +20,17 @@ env =
   , ("/", numericOp "/" (/))
   , ("=", numBoolOp (==))
   , (">", numBoolOp (>))
-  , ("<=", numBoolOp (<=))
-  , ("<", numBoolOp (<))
   , (">=", numBoolOp (>=))
+  , ("<", numBoolOp (<))
+  , ("<=", numBoolOp (<=))
   , ("all", boolOp (&&))
   , ("any", boolOp (||))
   , ("number?", isNumber)
   , ("string?", isString)
-  -- , ("if", conditional)
   -- , ("atom?", isAtom)
+  , ("if", conditional)
+  , ("head", getHead)
+  , ("tail", getTail)
   ]
 
 numericOp ::
@@ -34,35 +38,33 @@ numericOp ::
 numericOp "+" _ [] = return $ Number 0
 numericOp "*" _ [] = return $ Number 1
 numericOp atom _ [] = throwError $ NumArgs Atleast atom 2 []
-numericOp _ op params = mapM readNum params >>= return . Number . foldl1 op
+numericOp atom op params =
+  mapM (readNum atom) params >>= return . Number . foldl1 op
 
 numBoolOp :: (Double -> Double -> Bool) -> [LispVal] -> ThrowsError LispVal
 numBoolOp op params = do
-  left <- readNum $ params !! 0
-  right <- readNum $ params !! 1
+  left <- readNum "" $ params !! 0
+  right <- readNum "" $ params !! 1
   return $ Bool $ op left right
 
 boolOp :: (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
 boolOp op params = mapM readBool params >>= return . Bool . foldl1 op
 
-readNum :: LispVal -> ThrowsError Double
-readNum (Number n) = return n
+readNum :: String -> LispVal -> ThrowsError Double
+readNum _ (Number n) = return n
+readNum func val = throwError $ TypeMismatch func "number" val
 
 readBool :: LispVal -> ThrowsError Bool
 readBool (Bool n) = return n
 
--- conditional :: [LispVal] -> LispVal
--- conditional [cond, conseq, alt] =
---   case eval (cond) of
---     Bool True -> eval (conseq)
---     Bool False -> eval (alt)
---     _ -> Error "at evaluation of test condition of 'if'"
--- conditional args =
---   Error $
---   (if (length args > 3)
---      then "Too many"
---      else "Too few") ++
---   " arguments passed 'if'"
+conditional :: [LispVal] -> ThrowsError LispVal
+conditional [cond, conseq, alt] = do
+  res <- eval (cond)
+  case res of
+    Bool True -> eval (conseq)
+    Bool False -> eval (alt)
+conditional args = throwError $ NumArgs Exact "if" 3 args
+
 isNumber :: [LispVal] -> ThrowsError LispVal
 isNumber [] = throwError $ NumArgs Exact "number?" 1 []
 isNumber (x:_) =
@@ -76,6 +78,17 @@ isString (x:_) =
   case x of
     String _ -> return $ Bool True
     _ -> return $ Bool False
+
+getHead :: [LispVal] -> ThrowsError LispVal
+getHead [List (x:xs)] = return x
+getHead [badArgs] = throwError $ TypeMismatch "head" "list" badArgs
+getHead args = throwError $ NumArgs Exact "head" 1 args
+
+-- getHead args = throwError $ NumArgs Exact "head" 1 args
+getTail :: [LispVal] -> ThrowsError LispVal
+getTail [List (x:xs)] = return $ List xs
+getTail [badArgs] = throwError $ TypeMismatch "tail" "list" badArgs
+getTail args = throwError $ NumArgs Exact "tail" 1 args
 
 eval :: LispVal -> ThrowsError LispVal
 eval val@(String _) = return val
