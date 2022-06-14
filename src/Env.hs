@@ -3,12 +3,14 @@ module Env
   , eval
   ) where
 
+import Control.Monad.Except
 import Data.Fixed
 import Data.Maybe
 
+import Errors
 import LispVal
 
-env :: [(String, [LispVal] -> LispVal)]
+env :: [(String, [LispVal] -> ThrowsError LispVal)]
 env =
   [ ("+", numericOp "+" (+))
   , ("-", numericOp "-" (-))
@@ -23,68 +25,66 @@ env =
   , ("any", boolOp (||))
   , ("number?", isNumber)
   , ("string?", isString)
-  , ("if", conditional)
+  -- , ("if", conditional)
   -- , ("atom?", isAtom)
   ]
 
-numericOp :: String -> (Double -> Double -> Double) -> [LispVal] -> LispVal
-numericOp "+" _ [] = Number 0
-numericOp "*" _ [] = Number 1
-numericOp atom _ [] = Error $ "No arguments passed to '" ++ atom ++ "'"
-numericOp _ op params = Number $ foldl1 op $ map readNum params
+numericOp ::
+     String -> (Double -> Double -> Double) -> [LispVal] -> ThrowsError LispVal
+numericOp "+" _ [] = return $ Number 0
+numericOp "*" _ [] = return $ Number 1
+numericOp atom _ [] = throwError $ NumArgs Atleast atom 2 []
+numericOp _ op params = mapM readNum params >>= return . Number . foldl1 op
 
-numBoolOp :: (Double -> Double -> Bool) -> [LispVal] -> LispVal
-numBoolOp op params =
-  let left = readNum $ params !! 0
-      right = readNum $ params !! 1
-   in Bool $ op left right
+numBoolOp :: (Double -> Double -> Bool) -> [LispVal] -> ThrowsError LispVal
+numBoolOp op params = do
+  left <- readNum $ params !! 0
+  right <- readNum $ params !! 1
+  return $ Bool $ op left right
 
-boolOp :: (Bool -> Bool -> Bool) -> [LispVal] -> LispVal
-boolOp op params = Bool $ foldl1 op $ map readBool params
+boolOp :: (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
+boolOp op params = mapM readBool params >>= return . Bool . foldl1 op
 
-readNum :: LispVal -> Double
-readNum (Number n) = n
+readNum :: LispVal -> ThrowsError Double
+readNum (Number n) = return n
 
-readBool :: LispVal -> Bool
-readBool (Bool n) = n
+readBool :: LispVal -> ThrowsError Bool
+readBool (Bool n) = return n
 
-conditional :: [LispVal] -> LispVal
-conditional [cond, conseq, alt] =
-  case eval (cond) of
-    Bool True -> eval (conseq)
-    Bool False -> eval (alt)
-    _ -> Error "at evaluation of test condition of 'if'"
-conditional args =
-  Error $
-  (if (length args > 3)
-     then "Too many"
-     else "Too few") ++
-  " arguments passed 'if'"
-
-isNumber :: [LispVal] -> LispVal
-isNumber [] = Error "No argument passed to 'number?'"
+-- conditional :: [LispVal] -> LispVal
+-- conditional [cond, conseq, alt] =
+--   case eval (cond) of
+--     Bool True -> eval (conseq)
+--     Bool False -> eval (alt)
+--     _ -> Error "at evaluation of test condition of 'if'"
+-- conditional args =
+--   Error $
+--   (if (length args > 3)
+--      then "Too many"
+--      else "Too few") ++
+--   " arguments passed 'if'"
+isNumber :: [LispVal] -> ThrowsError LispVal
+isNumber [] = throwError $ NumArgs Exact "number?" 1 []
 isNumber (x:_) =
   case x of
-    Number _ -> Bool True
-    _ -> Bool False
+    Number _ -> return $ Bool True
+    _ -> return $ Bool False
 
-isString :: [LispVal] -> LispVal
-isString [] = Error "No argument passed to 'string?'"
+isString :: [LispVal] -> ThrowsError LispVal
+isString [] = throwError $ NumArgs Exact "string?" 1 []
 isString (x:_) =
   case x of
-    String _ -> Bool True
-    _ -> Bool False
+    String _ -> return $ Bool True
+    _ -> return $ Bool False
 
-eval :: LispVal -> LispVal
-eval val@(String _) = val
-eval val@(Number _) = val
-eval val@(Bool _) = val
-eval (List [Atom "quote", val]) = val
-eval (List (Atom func:args)) = apply func $ map eval args
-eval (Error message) = LispVal.Error $ "Error: " ++ message
-eval _ = LispVal.Error "Can not parse"
+eval :: LispVal -> ThrowsError LispVal
+eval val@(String _) = return val
+eval val@(Number _) = return val
+eval val@(Bool _) = return val
+eval (List [Atom "quote", val]) = return val
+eval (List (Atom func:args)) = mapM eval args >>= apply func
+eval badForm = throwError $ Unexpected "Can not parse"
 
-apply :: String -> [LispVal] -> LispVal
+apply :: String -> [LispVal] -> ThrowsError LispVal
 apply func args =
-  maybe (LispVal.Error $ func ++ " can not be found") ($ args) $
-  (lookup func env)
+  maybe (throwError $ NotFunction $ show func) ($ args) $ (lookup func env)

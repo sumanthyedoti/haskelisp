@@ -6,11 +6,7 @@ import Control.Applicative
 import qualified Data.Char as C
 import qualified Data.List as L
 
-data Error
-  = Unexpected String
-  | EndOfInput
-  | Error String
-  deriving (Show)
+type Error = String
 
 newtype Parser v =
   Parser
@@ -32,7 +28,7 @@ instance Applicative Parser where
       return (f v, input'')
 
 instance Alternative Parser where
-  empty = Parser $ \_ -> Left $ Error ""
+  empty = Parser $ \_ -> Left $ ""
   (Parser p1) <|> (Parser p2) =
     Parser $ \input ->
       case p1 input of
@@ -40,7 +36,7 @@ instance Alternative Parser where
         _ ->
           case p2 input of
             Right (v2, rest2) -> return (v2, rest2)
-            _ -> Left $ Unexpected (take 1 input)
+            _ -> Left $ "Unexpected " ++ (take 1 input)
 
 instance Monad Parser where
   return = pure
@@ -55,10 +51,10 @@ spanTill f = Parser $ Right . span f
 satisfy :: (Char -> Bool) -> Parser Char
 satisfy predicate =
   Parser $ \case
-    [] -> Left EndOfInput
+    [] -> Left "End of input"
     (hd:rest)
       | predicate hd -> Right (hd, rest)
-      | otherwise -> Left $ Unexpected ("'" ++ [hd] ++ "'")
+      | otherwise -> Left $ "Unexpected " ++ ("'" ++ [hd] ++ "'")
 
 char :: Char -> Parser Char
 char c = satisfy (== c)
@@ -76,7 +72,7 @@ number :: Parser Double
 number =
   Parser $ \input ->
     case reads input :: [(Double, String)] of
-      [] -> Left $ Unexpected $ head input : " not a number"
+      [] -> Left $ "Unexpected " ++ (head input : " not a number")
       res -> Right $ head res
 
 space :: Parser Char
@@ -89,24 +85,23 @@ skipMany1 :: Parser p -> Parser [p]
 skipMany1 p = some p
 
 oneOf :: [Char] -> Parser Char
-oneOf [] = Parser $ \_ -> Left $ Error "Can not be empty list"
+oneOf [] = Parser $ \_ -> Left $ "Can not be empty list"
 oneOf str =
   Parser $ \input ->
     case (head input) `elem` str of
       True -> Right (head input, tail input)
-      False -> Left $ (Unexpected $ take 1 input)
+      False -> Left $ "Unexpected " ++ take 1 input
 
 noneOf :: [Char] -> Parser Char
-noneOf [] = Parser $ \_ -> Left $ Error "Can not be empty list"
+noneOf [] = Parser $ \_ -> Left $ "Can not be empty list"
 noneOf str =
   Parser $ \input ->
     case (head input) `elem` str of
       False -> Right (head input, tail input)
       True ->
         Left $
-        (Unexpected $
-         "character should be none of " ++
-         ((init . drop 1) $ show (L.intersperse ',' str)))
+        "character should be none of " ++
+        ((init . drop 1) $ show (L.intersperse ',' str))
 
 sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy sep elem = (:) <$> elem <*> some (sep *> elem) <|> pure []

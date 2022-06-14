@@ -1,33 +1,39 @@
-module Errors
-  ( LispError
-  , ThrowsError
-  ) where
+module Errors where
 
 import Control.Monad.Except
 
 import LispVal
 
+data Args
+  = Atleast
+  | Exact
+
 data LispError
-  = NumArgs String Integer [LispVal]
+  = NumArgs Args String Integer [LispVal]
   | TypeMismatch String LispVal
   | ParserError String
   | BadSpecialForm String String
-  | NotFunction String String
+  | NotFunction String
   | UnboundVar String String
   | Default String
+  | Unexpected String
 
 instance Show LispError where
-  show (NumArgs funcName expected found) =
+  show (NumArgs args funcName expected found) =
     funcName ++
     "Expectes " ++
+    (case args of
+       Atleast -> "atleast "
+       Exact -> "") ++
     show expected ++
     " args; found" ++ (show $ length found) ++ "values, " ++ unwordList found
   show (UnboundVar message varname) = message ++ ": " ++ varname
   show (BadSpecialForm message form) = message ++ ": " ++ show form
-  show (NotFunction message func) = message ++ ": " ++ show func
+  show (NotFunction func) = "Function'" ++ show func ++ "' not found"
   show (TypeMismatch expected found) =
     "Invalid type: expected " ++ expected ++ ", found " ++ show found
-  show (ParserError parseErr) = "Parse error at " ++ show parseErr
+  show (ParserError parseErr) = "Error parsing " ++ show parseErr
+  show (Unexpected err) = "Unexpected " ++ show err
 
 type ThrowsError = Either LispError
 

@@ -5,12 +5,15 @@ module Parser
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Except
 import Data.List
 import Data.Maybe
 
 import ParserLib
 
 import Env
+
+import Errors
 import LispVal
 
 symbol :: Parser Char
@@ -62,10 +65,9 @@ parseExpr :: Parser LispVal
 parseExpr =
   parseAtom <|> parseString <|> parseNumber <|> parseQuote <|> parseList
 
-parse :: String -> LispVal
+parse :: String -> ThrowsError LispVal
 parse input =
   case ParserLib.parse (parseExpr) input of
-    Left err -> LispVal.Error $ show err
-    Right (val, "") -> val
-    Right (val, rest) ->
-      LispVal.Error $ "could not parse the expression at " ++ rest
+    Left err -> throwError $ ParserError err
+    Right (val, "") -> return val
+    Right (val, rest) -> throwError $ Unexpected rest

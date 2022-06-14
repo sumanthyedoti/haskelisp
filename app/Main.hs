@@ -2,12 +2,13 @@ module Main where
 
 import System.Environment
 
+import Control.Monad
 import Env (eval)
+import Errors
 import Parser
-import System.IO
 
 main :: IO ()
 main = do
-  hSetEncoding stdin utf8
   (expr:_) <- getArgs
-  print $ eval $ parse expr
+  evaled <- return $ liftM show (parse (expr) >>= eval)
+  putStrLn $ extractValue $ trapError evaled
