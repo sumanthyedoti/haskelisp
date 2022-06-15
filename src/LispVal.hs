@@ -10,7 +10,7 @@ data LispVal
 
 instance Show LispVal where
   show (Atom atom) = atom
-  show (String str) = str
+  show (String str) = "\"" ++ str ++ "\""
   show (Number contents) = show contents
   show (Bool True) = "#t"
   show (Bool False) = "#f"

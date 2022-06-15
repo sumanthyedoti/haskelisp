@@ -54,8 +54,8 @@ instance Show LispError where
   show (BadSpecialForm message form) = message ++ ": " ++ show form
   show (NotFunction func) = "Function'" ++ show func ++ "' not found"
   show (TypeMismatch func expected found) =
-    "Invalid type: " ++
-    func ++ " expected " ++ expected ++ ", found " ++ showType found
+    "Invalid type: '" ++
+    func ++ "' expected " ++ expected ++ ", found " ++ showType found
   show (ParserError parseErr) = "Error parsing " ++ show parseErr
   show (Unexpected err) = "Unexpected " ++ show err
   show (Default err) = "Error: " ++ show err

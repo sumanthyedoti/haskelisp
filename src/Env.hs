@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE ExistentialQuantification #-}
 
 module Env
   ( env
@@ -29,8 +30,10 @@ env =
   , ("string?", isString)
   -- , ("atom?", isAtom)
   , ("if", conditional)
-  , ("head", getHead)
-  , ("tail", getTail)
+  , ("car", getHead)
+  , ("cdr", getTail)
+  , ("cons", cons)
+  , ("eqv?", eqv)
   ]
 
 numericOp ::
@@ -89,6 +92,30 @@ getTail :: [LispVal] -> ThrowsError LispVal
 getTail [List (x:xs)] = return $ List xs
 getTail [badArgs] = throwError $ TypeMismatch "tail" "list" badArgs
 getTail args = throwError $ NumArgs Exact "tail" 1 args
+
+cons :: [LispVal] -> ThrowsError LispVal
+cons [List xs, _] =
+  throwError $ TypeMismatch "cons" "non-list value as first argument" (List xs)
+cons [x, List []] = return $ List $ [x]
+cons [x, List xs] = return $ List $ x : xs
+cons [_, x] = throwError $ TypeMismatch "cons" "list value as second argument" x
+cons args@[_] = throwError $ NumArgs Exact "cons" 2 args
+
+eqv :: [LispVal] -> ThrowsError LispVal
+eqv [Bool x, Bool y] = return $ Bool $ x == y
+eqv [Number x, Number y] = return $ Bool $ x == y
+eqv [String x, String y] = return $ Bool $ x == y
+eqv [Atom x, Atom y] = return $ Bool $ x == y
+eqv [List xs, List ys] =
+  return $ Bool $ (length xs == length ys) && (all eqvPair $ zip xs ys)
+  where
+    eqvPair :: (LispVal, LispVal) -> Bool
+    eqvPair (x, y) =
+      case eqv [x, y] of
+        Left err -> False
+        Right (Bool val) -> val
+eqv [_, _] = return $ Bool False
+eqv badArgs = throwError $ NumArgs Exact "eqv?" 2 badArgs
 
 eval :: LispVal -> ThrowsError LispVal
 eval val@(String _) = return val
