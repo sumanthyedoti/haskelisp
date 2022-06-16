@@ -5,7 +5,6 @@ import System.Environment
 import System.IO
 
 import Env
-import Errors
 import Eval
 import Parser
 
@@ -27,6 +26,5 @@ runRepl_ env = do
     then return ()
     else evalAndPrint env input >> runRepl_ env
 
---
 main :: IO ()
 main = nullEnv >>= runRepl_

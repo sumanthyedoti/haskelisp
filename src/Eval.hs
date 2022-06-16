@@ -9,8 +9,6 @@ import Data.Fixed
 import Data.Maybe
 
 import Env
-import Errors
-import LispVal
 
 global :: [(String, [LispVal] -> ThrowsError LispVal)]
 global =

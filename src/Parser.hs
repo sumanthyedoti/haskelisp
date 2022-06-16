@@ -13,8 +13,7 @@ import ParserLib
 
 import Eval
 
-import Errors
-import LispVal
+import Env
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
