@@ -28,17 +28,5 @@ runRepl_ env = do
     else evalAndPrint env input >> runRepl_ env
 
 --
--- main :: IO ()
--- main = nullEnv >>= runRepl_
-until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
-until_ pred prompt action = do
-  result <- prompt
-  if pred result
-    then return ()
-    else action result >> until_ pred prompt action
-
-runRepl :: IO ()
-runRepl = nullEnv >>= until_ (== "quit") readExpr . evalAndPrint
-
 main :: IO ()
-main = runRepl
+main = nullEnv >>= runRepl_
