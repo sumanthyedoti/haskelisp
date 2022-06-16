@@ -1,27 +1,44 @@
 module Main where
 
-import System.Environment
-
 import Control.Monad
-import Env (eval)
-import Errors
-import Parser
+import System.Environment
 import System.IO
+
+import Env
+import Errors
+import Eval
+import Parser
 
 readExpr :: IO String
 readExpr = putStr "hlisp> " >> hFlush stdout >> getLine
 
-evalAndPrint :: String -> IO ()
-evalAndPrint expr = do
-  evaled <- return $ liftM show (parse expr >>= eval)
-  putStrLn $ extractValue $ trapError evaled
+flushStr :: String -> IO ()
+flushStr s = putStr s >> hFlush stdout
 
-runRepl_ :: IO ()
-runRepl_ = do
+evalAndPrint :: Env -> String -> IO ()
+evalAndPrint env expr = do
+  evaled <- runIOThrows $ liftM show ((liftThrows $ parse expr) >>= eval env)
+  putStrLn $ evaled
+
+runRepl_ :: Env -> IO ()
+runRepl_ env = do
   input <- readExpr
   if (input == ":quit" || input == ":q")
     then return ()
-    else evalAndPrint input >> runRepl_
+    else evalAndPrint env input >> runRepl_ env
+
+--
+-- main :: IO ()
+-- main = nullEnv >>= runRepl_
+until_ :: Monad m => (a -> Bool) -> m a -> (a -> m ()) -> m ()
+until_ pred prompt action = do
+  result <- prompt
+  if pred result
+    then return ()
+    else action result >> until_ pred prompt action
+
+runRepl :: IO ()
+runRepl = nullEnv >>= until_ (== "quit") readExpr . evalAndPrint
 
 main :: IO ()
-main = runRepl_
+main = runRepl

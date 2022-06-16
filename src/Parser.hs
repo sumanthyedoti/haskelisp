@@ -11,7 +11,7 @@ import Data.Maybe
 
 import ParserLib
 
-import Env
+import Eval
 
 import Errors
 import LispVal
@@ -42,10 +42,6 @@ parseAtom = do
       "#t" -> Bool True
       "#f" -> Bool False
       _ -> Atom atom
-    -- P.char '('
-    -- x <- P.try parseList <|> parseDottedList
-    -- P.char ')'
-    -- return x
 
 parseNumber :: Parser LispVal
 parseNumber = do

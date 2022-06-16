@@ -12,13 +12,15 @@ data Args
 
 type Function = String
 
+type Variable = String
+
 data LispError
   = NumArgs Args Function Int [LispVal]
   | TypeMismatch Function String LispVal
   | ParserError String
   | BadSpecialForm String String
   | NotFunction String
-  | UnboundVar String String
+  | UnboundVar String Variable
   | Default String
   | Unexpected String
 
@@ -50,12 +52,12 @@ instance Show LispError where
     "; found " ++
     (show $ length found) ++
     pluralize (length found) "value" ++ ", " ++ unwordList found
-  show (UnboundVar message varname) = message ++ ": " ++ varname
+  show (UnboundVar message varname) = message ++ varname
   show (BadSpecialForm message form) = message ++ ": " ++ show form
   show (NotFunction func) = "Function'" ++ show func ++ "' not found"
   show (TypeMismatch func expected found) =
     "Invalid type: '" ++
-    func ++ "' expected " ++ expected ++ ", found " ++ showType found
+    func ++ "' expects " ++ expected ++ ", found " ++ showType found
   show (ParserError parseErr) = "Error parsing " ++ show parseErr
   show (Unexpected err) = "Unexpected " ++ show err
   show (Default err) = "Error: " ++ show err
