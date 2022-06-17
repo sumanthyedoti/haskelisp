@@ -77,12 +77,6 @@ instance Show LispError where
 
 type ThrowsError = Either LispError
 
--- will always have valid (Right) data
-trapError action = catchError action (return . show)
-
-extractValue :: ThrowsError a -> a
-extractValue (Right val) = val
-
 {-| Lisp Values
    -------------
 -}
@@ -131,8 +125,11 @@ liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err) = throwError err
 liftThrows (Right val) = return val
 
+-- cahtch Error and will return valid (Right) data
 runIOThrows :: IOThrowsError String -> IO String
-runIOThrows action = runExceptT (trapError action) >>= return . extractValue
+runIOThrows action =
+  runExceptT (catchError action (return . show)) >>=
+  return . (\(Right val) -> val)
 
 isBound :: Env -> String -> IO Bool
 isBound envRef var =
