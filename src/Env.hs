@@ -50,6 +50,10 @@ data Args
   = Atleast
   | Exact
 
+data UnboundType
+  = Get
+  | Set
+
 type Function = String
 
 type Variable = String
@@ -60,7 +64,7 @@ data LispError
   | ParserError String
   | BadSpecialForm String String
   | NotFunction String
-  | UnboundVar String Variable
+  | UnboundVar UnboundType Variable
   | Default String
   | Unexpected String
 
@@ -92,7 +96,11 @@ instance Show LispError where
     "; found " ++
     (show $ length found) ++
     pluralize (length found) "value" ++ ", " ++ unwordList found
-  show (UnboundVar message varname) = message ++ varname
+  show (UnboundVar action varname) =
+    (case action of
+       Get -> "Getting"
+       Set -> "Setting") ++
+    " an unbound varibale " ++ varname
   show (BadSpecialForm message form) = message ++ ": " ++ show form
   show (NotFunction func) = "Function'" ++ show func ++ "' not found"
   show (TypeMismatch func expected found) =
@@ -135,16 +143,13 @@ isBound envRef var =
 getVar :: Env -> String -> IOThrowsError LispVal
 getVar envRef var = do
   env <- liftIO $ readIORef envRef
-  maybe
-    (throwError $ UnboundVar "Getting an unbound variable" var)
-    (liftIO . readIORef)
-    (lookup var env)
+  maybe (throwError $ UnboundVar Get var) (liftIO . readIORef) (lookup var env)
 
 setVar :: Env -> String -> LispVal -> IOThrowsError LispVal
 setVar envRef varName val = do
   env <- liftIO $ readIORef envRef
   maybe
-    (throwError $ UnboundVar "Setting an unbound variable" varName)
+    (throwError $ UnboundVar Set varName)
     (liftIO . (flip writeIORef val))
     (lookup varName env)
   return val

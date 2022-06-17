@@ -112,9 +112,13 @@ eval env val@(String _) = return val
 eval env val@(Number _) = return val
 eval env val@(Bool _) = return val
 eval env val@(Atom id) = getVar env id
+eval env (List [Atom "show", Atom id]) = getVar env id
+eval env (List [Atom "set!", Atom id, val]) = setVar env id val
 eval env (List [Atom "quote", val]) = return val
 eval env (List [Atom "if", cond, conseq, alt]) =
   conditional env [cond, conseq, alt]
+eval env (List [Atom "define", Atom var, val]) =
+  eval env val >>= defineVar env var
 eval env (List (Atom "define":List (Atom var:params):body)) =
   makeFunc env params body >>= defineVar env var
 eval env (List (Atom "lambda":List params:body)) = makeFunc env params body
