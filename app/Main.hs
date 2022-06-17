@@ -26,5 +26,11 @@ runRepl_ env = do
     then return ()
     else evalAndPrint env input >> runRepl_ env
 
+primitiveBindings :: IO Env
+primitiveBindings =
+  nullEnv >>= (flip bindVars $ map makePrimitiveFunc primitives)
+  where
+    makePrimitiveFunc (var, func) = (var, PrimitiveFunc func)
+
 main :: IO ()
-main = nullEnv >>= runRepl_
+main = primitiveBindings >>= runRepl_

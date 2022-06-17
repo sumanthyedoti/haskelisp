@@ -6,7 +6,10 @@ import Control.Monad.Except
 import Data.IORef
 
 {-| Data Types
-   ------------
+   ============
+-}
+{-| Lisp Values
+   -------------
 -}
 data LispVal
   = Atom String
@@ -17,21 +20,25 @@ data LispVal
   | Bool Bool
   | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
   | Func
-      { param :: [String]
-      , varArg :: (Maybe String)
+      { params :: [String]
       , body :: [LispVal]
       , closure :: Env
       }
 
+showVal (Atom atom) = atom
+showVal (String str) = "\"" ++ str ++ "\""
+showVal (Number contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f"
+showVal (List ls) = "(" ++ unwordList ls ++ ")"
+showVal (DottedList head tail) =
+  "(" ++ unwordList head ++ " . " ++ showVal tail ++ ")"
+showVal (PrimitiveFunc _) = "<primitive>"
+showVal (Func {params = args, body = body, closure = env}) =
+  "(lambda (" ++ unwords (map show args) ++ ")...)"
+
 instance Show LispVal where
-  show (Atom atom) = atom
-  show (String str) = "\"" ++ str ++ "\""
-  show (Number contents) = show contents
-  show (Bool True) = "#t"
-  show (Bool False) = "#f"
-  show (List ls) = "(" ++ unwordList ls ++ ")"
-  show (DottedList head tail) =
-    "(" ++ unwordList head ++ " . " ++ show tail ++ ")"
+  show = showVal
 
 unwordList :: [LispVal] -> String
 unwordList = unwords . map show

@@ -2,6 +2,7 @@
 
 module Eval
   ( eval
+  , primitives
   ) where
 
 import Control.Monad.Except
@@ -10,8 +11,8 @@ import Data.Maybe
 
 import Env
 
-global :: [(String, [LispVal] -> ThrowsError LispVal)]
-global =
+primitives :: [(String, [LispVal] -> ThrowsError LispVal)]
+primitives =
   [ ("+", numericOp "+" (+))
   , ("-", numericOp "-" (-))
   , ("*", numericOp "*" (*))
@@ -114,15 +115,13 @@ eval env val@(Atom id) = getVar env id
 eval env (List [Atom "quote", val]) = return val
 eval env (List [Atom "if", cond, conseq, alt]) =
   conditional env [cond, conseq, alt]
-eval env (List [Atom "define", Atom var, val]) =
-  eval env val >>= defineVar env var
-eval env (List (Atom func:args)) =
-  mapM (eval env) args >>= liftThrows . apply func
-eval env badForm = throwError $ Unexpected "Can not parse"
-
-apply :: String -> [LispVal] -> ThrowsError LispVal
-apply func args =
-  maybe (throwError $ NotFunction $ show func) ($ args) $ (lookup func global)
+eval env (List (Atom "define":List (Atom var:params):body)) =
+  makeFunc env params body >>= defineVar env var
+eval env (List (Atom "lambda":List params:body)) = makeFunc env params body
+eval env (List (function:args)) = do
+  func <- eval env function
+  argVals <- mapM (eval env) args
+  apply func argVals
 
 conditional :: Env -> [LispVal] -> IOThrowsError LispVal
 conditional env [cond, conseq, alt] = do
@@ -131,3 +130,19 @@ conditional env [cond, conseq, alt] = do
     Bool True -> eval env conseq
     Bool False -> eval env alt
 conditional _ args = throwError $ NumArgs Exact "if" 3 args
+
+apply :: LispVal -> [LispVal] -> IOThrowsError LispVal
+apply (PrimitiveFunc func) args = liftThrows $ func args
+apply (Func params body closure) args =
+  if length params /= length args
+    then throwError $ NumArgs Exact "" (length params) args
+    else (liftIO $ bindVars closure $ zip params args) >>= evalBody
+  where
+    remainingArgs = drop (length params) args
+    evalBody env = liftM last $ mapM (eval env) body
+    bindVarArgs arg env =
+      case arg of
+        Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)]
+        Nothing -> return env
+
+makeFunc env params body = return $ Func (map showVal params) body env
