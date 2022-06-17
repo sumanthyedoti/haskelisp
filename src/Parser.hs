@@ -62,7 +62,7 @@ parseExpr =
 
 parse :: String -> ThrowsError LispVal
 parse input =
-  case ParserLib.parse (parseExpr) input of
+  case ParserLib.parse parseExpr input of
     Left err -> throwError $ ParserError err
     Right (val, "") -> return val
     Right (val, rest) -> throwError $ Unexpected rest

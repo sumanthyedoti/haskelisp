@@ -149,4 +149,4 @@ apply (Func params body closure) args =
         Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)]
         Nothing -> return env
 
-makeFunc env params body = return $ Func (map showVal params) body env
+makeFunc env params body = return $ Func (map show params) body env

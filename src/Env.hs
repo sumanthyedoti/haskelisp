@@ -8,41 +8,6 @@ import Data.IORef
 {-| Data Types
    ============
 -}
-{-| Lisp Values
-   -------------
--}
-data LispVal
-  = Atom String
-  | List [LispVal]
-  | DottedList [LispVal] LispVal
-  | Number Double
-  | String String
-  | Bool Bool
-  | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
-  | Func
-      { params :: [String]
-      , body :: [LispVal]
-      , closure :: Env
-      }
-
-showVal (Atom atom) = atom
-showVal (String str) = "\"" ++ str ++ "\""
-showVal (Number contents) = show contents
-showVal (Bool True) = "#t"
-showVal (Bool False) = "#f"
-showVal (List ls) = "(" ++ unwordList ls ++ ")"
-showVal (DottedList head tail) =
-  "(" ++ unwordList head ++ " . " ++ showVal tail ++ ")"
-showVal (PrimitiveFunc _) = "<primitive>"
-showVal (Func {params = args, body = body, closure = env}) =
-  "(lambda (" ++ unwords (map show args) ++ ")...)"
-
-instance Show LispVal where
-  show = showVal
-
-unwordList :: [LispVal] -> String
-unwordList = unwords . map show
-
 {-| Errors
    --------
 -}
@@ -117,6 +82,39 @@ trapError action = catchError action (return . show)
 
 extractValue :: ThrowsError a -> a
 extractValue (Right val) = val
+
+{-| Lisp Values
+   -------------
+-}
+data LispVal
+  = Atom String
+  | List [LispVal]
+  | DottedList [LispVal] LispVal
+  | Number Double
+  | String String
+  | Bool Bool
+  | PrimitiveFunc ([LispVal] -> ThrowsError LispVal)
+  | Func
+      { params :: [String]
+      , body :: [LispVal]
+      , closure :: Env
+      }
+
+instance Show LispVal where
+  show (Atom atom) = atom
+  show (String str) = "\"" ++ str ++ "\""
+  show (Number contents) = show contents
+  show (Bool True) = "#t"
+  show (Bool False) = "#f"
+  show (List ls) = "(" ++ unwordList ls ++ ")"
+  show (DottedList head tail) =
+    "(" ++ unwordList head ++ " . " ++ show tail ++ ")"
+  show (PrimitiveFunc _) = "<primitive>"
+  show (Func {params = args, body = body, closure = env}) =
+    "(lambda (" ++ unwords (map show args) ++ ")...)"
+
+unwordList :: [LispVal] -> String
+unwordList = unwords . map show
 
 {-| Env
    ------
