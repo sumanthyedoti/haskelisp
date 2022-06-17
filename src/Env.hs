@@ -4,6 +4,7 @@ module Env where
 
 import Control.Monad.Except
 import Data.IORef
+import Data.Maybe
 
 {-| Data Types
    ============
@@ -59,7 +60,7 @@ instance Show LispError where
     show expected ++
     pluralize expected "arg" ++
     "; found " ++
-    (show $ length found) ++
+    show (length found) ++
     pluralize (length found) "value" ++ ", " ++ unwordList found
   show (UnboundVar action varname) =
     (case action of
@@ -125,15 +126,14 @@ liftThrows :: ThrowsError a -> IOThrowsError a
 liftThrows (Left err) = throwError err
 liftThrows (Right val) = return val
 
--- cahtch Error and will return valid (Right) data
+-- catches Error and will return valid (Right) data
 runIOThrows :: IOThrowsError String -> IO String
 runIOThrows action =
   runExceptT (catchError action (return . show)) >>=
   return . (\(Right val) -> val)
 
 isBound :: Env -> String -> IO Bool
-isBound envRef var =
-  readIORef envRef >>= return . maybe False (const True) . lookup var
+isBound envRef var = readIORef envRef >>= return . isJust . lookup var
 
 getVar :: Env -> String -> IOThrowsError LispVal
 getVar envRef var = do
@@ -145,7 +145,7 @@ setVar envRef varName val = do
   env <- liftIO $ readIORef envRef
   maybe
     (throwError $ UnboundVar Set varName)
-    (liftIO . (flip writeIORef val))
+    (liftIO . (`writeIORef` val))
     (lookup varName env)
   return val
 
@@ -163,7 +163,7 @@ defineVar envRef varName val = do
 bindVars :: Env -> [(String, LispVal)] -> IO Env
 bindVars envRef bindings = readIORef envRef >>= extendEnv bindings >>= newIORef
   where
-    extendEnv bindings env = liftM (++ env) (mapM addBinding bindings)
+    extendEnv bindings env = (++ env) <$> mapM addBinding bindings
     addBinding (var, val) = do
       ref <- newIORef val
       return (var, ref)

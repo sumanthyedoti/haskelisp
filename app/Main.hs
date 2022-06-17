@@ -16,19 +16,18 @@ flushStr s = putStr s >> hFlush stdout
 
 evalAndPrint :: Env -> String -> IO ()
 evalAndPrint env expr = do
-  evaled <- runIOThrows $ liftM show ((liftThrows $ parse expr) >>= eval env)
-  putStrLn $ evaled
+  evaled <- runIOThrows $ fmap show $ liftThrows (parse expr) >>= eval env
+  putStrLn evaled
 
 runRepl_ :: Env -> IO ()
 runRepl_ env = do
   input <- readExpr
-  if (input == ":quit" || input == ":q")
+  if input == ":quit" || input == ":q"
     then return ()
     else evalAndPrint env input >> runRepl_ env
 
 primitiveBindings :: IO Env
-primitiveBindings =
-  nullEnv >>= (flip bindVars $ map makePrimitiveFunc primitives)
+primitiveBindings = nullEnv >>= (`bindVars` map makePrimitiveFunc primitives)
   where
     makePrimitiveFunc (var, func) = (var, PrimitiveFunc func)
 

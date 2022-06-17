@@ -28,7 +28,7 @@ instance Applicative Parser where
       return (f v, input'')
 
 instance Alternative Parser where
-  empty = Parser $ \_ -> Left $ ""
+  empty = Parser $ \_ -> Left ""
   (Parser p1) <|> (Parser p2) =
     Parser $ \input ->
       case p1 input of
@@ -36,7 +36,7 @@ instance Alternative Parser where
         _ ->
           case p2 input of
             Right (v2, rest2) -> return (v2, rest2)
-            _ -> Left $ "Unexpected " ++ (take 1 input)
+            _ -> Left $ "Unexpected " ++ take 1 input
 
 instance Monad Parser where
   return = pure
@@ -63,10 +63,10 @@ string :: String -> Parser String
 string = traverse char
 
 digit :: Parser Char
-digit = satisfy (C.isDigit)
+digit = satisfy C.isDigit
 
 letter :: Parser Char
-letter = satisfy (C.isAlpha)
+letter = satisfy C.isAlpha
 
 number :: Parser Double
 number =
@@ -76,32 +76,31 @@ number =
       res -> Right $ head res
 
 space :: Parser Char
-space = satisfy (C.isSpace)
+space = satisfy C.isSpace
 
 skipMany :: Parser p -> Parser [p]
-skipMany p = many p
+skipMany = many
 
 skipMany1 :: Parser p -> Parser [p]
-skipMany1 p = some p
+skipMany1 = some
 
 oneOf :: [Char] -> Parser Char
-oneOf [] = Parser $ \_ -> Left $ "Can not be empty list"
+oneOf [] = Parser $ \_ -> Left "Can not be empty list"
 oneOf str =
   Parser $ \input ->
-    case (head input) `elem` str of
-      True -> Right (head input, tail input)
-      False -> Left $ "Unexpected " ++ take 1 input
+    if head input `elem` str
+      then Right (head input, tail input)
+      else Left $ "Unexpected " ++ take 1 input
 
 noneOf :: [Char] -> Parser Char
-noneOf [] = Parser $ \_ -> Left $ "Can not be empty list"
+noneOf [] = Parser $ \_ -> Left "Can not be empty list"
 noneOf str =
   Parser $ \input ->
-    case (head input) `elem` str of
-      False -> Right (head input, tail input)
-      True ->
-        Left $
-        "character should be none of " ++
-        ((init . drop 1) $ show (L.intersperse ',' str))
+    if head input `elem` str
+      then Left $
+           "character should be none of " ++
+           (init . drop 1) (show (L.intersperse ',' str))
+      else Right (head input, tail input)
 
 sepBy :: Parser a -> Parser b -> Parser [b]
 sepBy sep elem = (:) <$> elem <*> some (sep *> elem) <|> pure []

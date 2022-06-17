@@ -1,5 +1,3 @@
-{-# LANGUAGE LambdaCase #-}
-
 module Eval
   ( eval
   , primitives
@@ -86,7 +84,7 @@ getTail args = throwError $ NumArgs Exact "tail" 1 args
 cons :: [LispVal] -> ThrowsError LispVal
 cons [List xs, _] =
   throwError $ TypeMismatch "cons" "non-list value as first argument" (List xs)
-cons [x, List []] = return $ List $ [x]
+cons [x, List []] = return $ List [x]
 cons [x, List xs] = return $ List $ x : xs
 cons [_, x] = throwError $ TypeMismatch "cons" "list value as second argument" x
 cons args@[_] = throwError $ NumArgs Exact "cons" 2 args
@@ -97,7 +95,7 @@ eqv [Number x, Number y] = return $ Bool $ x == y
 eqv [String x, String y] = return $ Bool $ x == y
 eqv [Atom x, Atom y] = return $ Bool $ x == y
 eqv [List xs, List ys] =
-  return $ Bool $ (length xs == length ys) && (all eqvPair $ zip xs ys)
+  return $ Bool $ (length xs == length ys) && all eqvPair (zip xs ys)
   where
     eqvPair :: (LispVal, LispVal) -> Bool
     eqvPair (x, y) =
@@ -140,13 +138,13 @@ apply (PrimitiveFunc func) args = liftThrows $ func args
 apply (Func params body closure) args =
   if length params /= length args
     then throwError $ NumArgs Exact "" (length params) args
-    else (liftIO $ bindVars closure $ zip params args) >>= evalBody
+    else liftIO (bindVars closure $ zip params args) >>= evalBody
   where
     remainingArgs = drop (length params) args
-    evalBody env = liftM last $ mapM (eval env) body
+    evalBody env = last <$> mapM (eval env) body
     bindVarArgs arg env =
       case arg of
-        Just argName -> liftIO $ bindVars env [(argName, List $ remainingArgs)]
+        Just argName -> liftIO $ bindVars env [(argName, List remainingArgs)]
         Nothing -> return env
 
 makeFunc env params body = return $ Func (map show params) body env
